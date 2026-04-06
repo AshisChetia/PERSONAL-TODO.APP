@@ -1,0 +1,37 @@
+.todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: fadeIn 0.6s ease-out 0.2s backwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.todo-list > * {
+  animation: slideInRight 0.5s ease-out backwards;
+}
+
+.todo-list > *:nth-child(1) { animation-delay: 0.1s; }
+.todo-list > *:nth-child(2) { animation-delay: 0.15s; }
+.todo-list > *:nth-child(3) { animation-delay: 0.2s; }
+.todo-list > *:nth-child(4) { animation-delay: 0.25s; }
+.todo-list > *:nth-child(5) { animation-delay: 0.3s; }
+.todo-list > *:nth-child(n+6) { animation-delay: 0.35s; }
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
