@@ -156,9 +156,10 @@ exports.deleteTodo = async (req, res) => {
 
 // Add sub-todo
 exports.addSubTodo = async (req, res) => {
+  let connection;
   try {
     const { title, description, priority } = req.body;
-    const connection = await pool.getConnection();
+    connection = await pool.getConnection();
 
     // Check if parent todo exists
     const [todos] = await connection.execute('SELECT * FROM todos WHERE id = ?', [req.params.id]);
@@ -170,6 +171,16 @@ exports.addSubTodo = async (req, res) => {
     if (!title) {
       connection.release();
       return res.status(400).json({ message: 'Title is required' });
+    }
+
+    // Check if subtodo count is at maximum (10)
+    const [existingSubtodos] = await connection.execute(
+      'SELECT COUNT(*) as count FROM subtodos WHERE todoId = ?',
+      [req.params.id]
+    );
+    if (existingSubtodos[0].count >= 10) {
+      connection.release();
+      return res.status(400).json({ message: 'Cannot add more than 10 sub-todos per todo' });
     }
 
     // Insert subtodo
@@ -193,16 +204,19 @@ exports.addSubTodo = async (req, res) => {
     connection.release();
     res.status(201).json(todo);
   } catch (error) {
+    if (connection) connection.release();
+    console.error('Error adding sub-todo:', error.message);
     res.status(500).json({ message: 'Error adding sub-todo', error: error.message });
   }
 };
 
 // Update sub-todo
 exports.updateSubTodo = async (req, res) => {
+  let connection;
   try {
     const { title, description, completed, priority } = req.body;
     const { id, subTodoId } = req.params;
-    const connection = await pool.getConnection();
+    connection = await pool.getConnection();
 
     // Check if todo exists
     const [todos] = await connection.execute('SELECT * FROM todos WHERE id = ?', [id]);
@@ -255,15 +269,18 @@ exports.updateSubTodo = async (req, res) => {
     connection.release();
     res.json(todo);
   } catch (error) {
+    if (connection) connection.release();
+    console.error('Error updating sub-todo:', error.message);
     res.status(500).json({ message: 'Error updating sub-todo', error: error.message });
   }
 };
 
 // Delete sub-todo
 exports.deleteSubTodo = async (req, res) => {
+  let connection;
   try {
     const { id, subTodoId } = req.params;
-    const connection = await pool.getConnection();
+    connection = await pool.getConnection();
 
     // Check if todo exists
     const [todos] = await connection.execute('SELECT * FROM todos WHERE id = ?', [id]);
@@ -297,6 +314,8 @@ exports.deleteSubTodo = async (req, res) => {
     connection.release();
     res.json(todo);
   } catch (error) {
+    if (connection) connection.release();
+    console.error('Error deleting sub-todo:', error.message);
     res.status(500).json({ message: 'Error deleting sub-todo', error: error.message });
   }
 };
