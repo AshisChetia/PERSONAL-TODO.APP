@@ -33,3 +33,5 @@ logs/
 
 # Runtime files
 .cache/
+
+COMPLETE_DEPLOYMENT_GUIDE.md

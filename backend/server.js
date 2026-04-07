@@ -14,6 +14,15 @@ mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.log('MongoDB connection error:', err));
 
+// Test route - to verify server is running
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Todo Master Backend is running! ✅',
+    status: 'Server OK',
+    mongodb: mongoose.connection.readyState === 1 ? 'Connected' : 'Not connected'
+  });
+});
+
 // Routes
 app.use('/api/todos', require('./routes/todoRoutes'));
 
