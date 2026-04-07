@@ -58,14 +58,7 @@ TODO-PERSONAL/
 │
 ├── .gitignore                    # Git ignore file
 ├── README.md                     # This file
-└── DOCUMENTATION_FILES/
-    ├── DEPLOYMENT_SUMMARY.md            # Deployment overview
-    ├── DEPLOYMENT_CHECKLIST.md         # Step-by-step checklist
-    ├── VERCEL_BACKEND_DEPLOYMENT.md    # Backend deployment guide
-    ├── VERCEL_FRONTEND_DEPLOYMENT.md   # Frontend deployment guide
-    ├── TIDB_QUICK_START.md             # TiDB Cloud setup
-    ├── TIDB_MANUAL_TABLE_SETUP.md      # Create tables in TiDB
-    └── MIGRATION_SUMMARY.md            # MongoDB → TiDB migration
+
 ```
 
 ---
