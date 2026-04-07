@@ -58,6 +58,7 @@ TODO-PERSONAL/
 │
 ├── .gitignore                    # Git ignore file
 ├── README.md                     # This file
+<<<<<<< HEAD
 └── DOCUMENTATION_FILES/
     ├── DEPLOYMENT_SUMMARY.md            # Deployment overview
     ├── DEPLOYMENT_CHECKLIST.md         # Step-by-step checklist
@@ -66,6 +67,9 @@ TODO-PERSONAL/
     ├── TIDB_QUICK_START.md             # TiDB Cloud setup
     ├── TIDB_MANUAL_TABLE_SETUP.md      # Create tables in TiDB
     └── MIGRATION_SUMMARY.md            # MongoDB → TiDB migration
+=======
+
+>>>>>>> e02b0e55b0f80ca8ab4bd2467baf4dd7671d933d
 ```
 
 ---
@@ -324,11 +328,19 @@ CREATE TABLE subtodos (
 
 ### Backend (.env)
 ```
+<<<<<<< HEAD
 TIDB_HOST=gateway01.ap-southeast-1.prod.aws.tidbcloud.com
 TIDB_PORT=4000
 TIDB_USER=your_username
 TIDB_PASSWORD=your_password
 TIDB_DATABASE=test
+=======
+TIDB_HOST=your_tidb_hosst
+TIDB_PORT=4000
+TIDB_USER=your_username
+TIDB_PASSWORD=your_password
+TIDB_DATABASE=db_name
+>>>>>>> e02b0e55b0f80ca8ab4bd2467baf4dd7671d933d
 PORT=5000
 ```
 
@@ -526,50 +538,7 @@ DELETE /api/todos/:id
 ### Deleting
 - Click the 🗑️ (delete) icon to remove a todo
 
-## 🔧 Troubleshooting
 
-### MongoDB Connection Error
-- Ensure MongoDB is running on your system
-- Check the MONGODB_URI in `.env` file
-- For MongoDB Atlas, verify username/password and network access
-
-### CORS Error
-- Make sure backend is running on port 5000
-- Check that frontend proxy in `vite.config.js` is correctly configured
-
-### Port Already in Use
-- Backend: Change PORT in `.env`
-- Frontend: Modify proxy URL in `vite.config.js`
-
-## 📦 Tech Stack
-
-**Backend:**
-- Node.js
-- Express.js
-- MongoDB
-- Mongoose (ODM)
-- CORS middleware
-
-**Frontend:**
-- React 18
-- Vite (build tool)
-- CSS3 (modern styling)
-- Fetch API
-
-## 📝 Notes
-
-- All todos are persisted in MongoDB
-- The frontend communicates with the backend via REST API
-- Vite development server includes hot module replacement (HMR)
-- The app is fully responsive and mobile-friendly
-
-## 🎓 Learning Resources
-
-- [Express.js Documentation](https://expressjs.com/)
-- [MongoDB Documentation](https://docs.mongodb.com/)
-- [React Documentation](https://react.dev/)
-- [Vite Documentation](https://vitejs.dev/)
-- [Mongoose Documentation](https://mongoosejs.com/)
 
 ## 📄 License
 
