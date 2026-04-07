@@ -1,9 +1,24 @@
-const Todo = require('../models/Todo');
+const { pool } = require('../config/database');
 
 // Get all todos
 exports.getAllTodos = async (req, res) => {
   try {
-    const todos = await Todo.find().sort({ createdAt: -1 });
+    const connection = await pool.getConnection();
+    
+    // Get all todos
+    const [todos] = await connection.execute('SELECT * FROM todos ORDER BY createdAt DESC');
+    
+    // For each todo, get its subtodos
+    for (let todo of todos) {
+      const [subtodos] = await connection.execute(
+        'SELECT id AS _id, todoId, title, description, completed, priority, createdAt, updatedAt FROM subtodos WHERE todoId = ?',
+        [todo.id]
+      );
+      todo._id = todo.id;
+      todo.subTodos = subtodos;
+    }
+    
+    connection.release();
     res.json(todos);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching todos', error: error.message });
@@ -13,10 +28,24 @@ exports.getAllTodos = async (req, res) => {
 // Get todo by ID
 exports.getTodoById = async (req, res) => {
   try {
-    const todo = await Todo.findById(req.params.id);
-    if (!todo) {
+    const connection = await pool.getConnection();
+    const [todos] = await connection.execute('SELECT * FROM todos WHERE id = ?', [req.params.id]);
+    
+    if (todos.length === 0) {
+      connection.release();
       return res.status(404).json({ message: 'Todo not found' });
     }
+    
+    const todo = todos[0];
+    const [subtodos] = await connection.execute(
+      'SELECT id AS _id, todoId, title, description, completed, priority FROM subtodos WHERE todoId = ?',
+      [todo.id]
+    );
+    
+    todo._id = todo.id;
+    todo.subTodos = subtodos;
+    
+    connection.release();
     res.json(todo);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching todo', error: error.message });
@@ -32,16 +61,22 @@ exports.createTodo = async (req, res) => {
       return res.status(400).json({ message: 'Title is required' });
     }
 
-    const todo = new Todo({
-      title,
-      description,
-      priority,
-      dueDate: dueDate ? new Date(dueDate) : undefined,
-      subTodos: []
-    });
+    const connection = await pool.getConnection();
+    const insertData = [title, description || '', priority || 'medium', dueDate || null];
+    
+    const [result] = await connection.execute(
+      'INSERT INTO todos (title, description, priority, dueDate) VALUES (?, ?, ?, ?)',
+      insertData
+    );
 
-    const savedTodo = await todo.save();
-    res.status(201).json(savedTodo);
+    // Get the created todo
+    const [todos] = await connection.execute('SELECT * FROM todos WHERE id = ?', [result.insertId]);
+    const todo = todos[0];
+    todo._id = todo.id;
+    todo.subTodos = [];
+    
+    connection.release();
+    res.status(201).json(todo);
   } catch (error) {
     res.status(500).json({ message: 'Error creating todo', error: error.message });
   }
@@ -51,19 +86,46 @@ exports.createTodo = async (req, res) => {
 exports.updateTodo = async (req, res) => {
   try {
     const { title, description, completed, priority, dueDate } = req.body;
+    const connection = await pool.getConnection();
 
-    const todo = await Todo.findById(req.params.id);
-    if (!todo) {
+    // Check if todo exists
+    const [todos] = await connection.execute('SELECT * FROM todos WHERE id = ?', [req.params.id]);
+    if (todos.length === 0) {
+      connection.release();
       return res.status(404).json({ message: 'Todo not found' });
     }
 
-    if (title !== undefined) todo.title = title;
-    if (description !== undefined) todo.description = description;
-    if (completed !== undefined) todo.completed = completed;
-    if (priority !== undefined) todo.priority = priority;
-    if (dueDate !== undefined) todo.dueDate = dueDate ? new Date(dueDate) : null;
+    const todo = todos[0];
+    
+    // Build update query
+    const updates = [];
+    const values = [];
+    
+    if (title !== undefined) { updates.push('title = ?'); values.push(title); }
+    if (description !== undefined) { updates.push('description = ?'); values.push(description); }
+    if (completed !== undefined) { updates.push('completed = ?'); values.push(completed); }
+    if (priority !== undefined) { updates.push('priority = ?'); values.push(priority); }
+    if (dueDate !== undefined) { updates.push('dueDate = ?'); values.push(dueDate); }
 
-    const updatedTodo = await todo.save();
+    if (updates.length > 0) {
+      values.push(req.params.id);
+      const query = `UPDATE todos SET ${updates.join(', ')} WHERE id = ?`;
+      await connection.execute(query, values);
+    }
+
+    // Get updated todo
+    const [updatedTodos] = await connection.execute('SELECT * FROM todos WHERE id = ?', [req.params.id]);
+    const updatedTodo = updatedTodos[0];
+    
+    const [subtodos] = await connection.execute(
+      'SELECT id AS _id, todoId, title, description, completed, priority FROM subtodos WHERE todoId = ?',
+      [updatedTodo.id]
+    );
+    
+    updatedTodo._id = updatedTodo.id;
+    updatedTodo.subTodos = subtodos;
+
+    connection.release();
     res.json(updatedTodo);
   } catch (error) {
     res.status(500).json({ message: 'Error updating todo', error: error.message });
@@ -73,11 +135,20 @@ exports.updateTodo = async (req, res) => {
 // Delete todo
 exports.deleteTodo = async (req, res) => {
   try {
-    const todo = await Todo.findByIdAndDelete(req.params.id);
-    if (!todo) {
+    const connection = await pool.getConnection();
+    
+    const [todos] = await connection.execute('SELECT * FROM todos WHERE id = ?', [req.params.id]);
+    if (todos.length === 0) {
+      connection.release();
       return res.status(404).json({ message: 'Todo not found' });
     }
-    res.json({ message: 'Todo deleted successfully', todo });
+
+    const deletedTodo = todos[0];
+    await connection.execute('DELETE FROM todos WHERE id = ?', [req.params.id]);
+    
+    deletedTodo._id = deletedTodo.id;
+    connection.release();
+    res.json({ message: 'Todo deleted successfully', todo: deletedTodo });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting todo', error: error.message });
   }
@@ -87,26 +158,40 @@ exports.deleteTodo = async (req, res) => {
 exports.addSubTodo = async (req, res) => {
   try {
     const { title, description, priority } = req.body;
-    const todo = await Todo.findById(req.params.id);
+    const connection = await pool.getConnection();
 
-    if (!todo) {
+    // Check if parent todo exists
+    const [todos] = await connection.execute('SELECT * FROM todos WHERE id = ?', [req.params.id]);
+    if (todos.length === 0) {
+      connection.release();
       return res.status(404).json({ message: 'Todo not found' });
     }
 
     if (!title) {
+      connection.release();
       return res.status(400).json({ message: 'Title is required' });
     }
 
-    const subTodo = {
-      title,
-      description: description || '',
-      priority: priority || 'medium',
-      completed: false
-    };
+    // Insert subtodo
+    await connection.execute(
+      'INSERT INTO subtodos (todoId, title, description, priority) VALUES (?, ?, ?, ?)',
+      [req.params.id, title, description || '', priority || 'medium']
+    );
 
-    todo.subTodos.push(subTodo);
-    const updatedTodo = await todo.save();
-    res.status(201).json(updatedTodo);
+    // Get updated todo with all subtodos
+    const [updatedTodos] = await connection.execute('SELECT * FROM todos WHERE id = ?', [req.params.id]);
+    const todo = updatedTodos[0];
+    
+    const [subtodos] = await connection.execute(
+      'SELECT id AS _id, todoId, title, description, completed, priority FROM subtodos WHERE todoId = ?',
+      [todo.id]
+    );
+    
+    todo._id = todo.id;
+    todo.subTodos = subtodos;
+
+    connection.release();
+    res.status(201).json(todo);
   } catch (error) {
     res.status(500).json({ message: 'Error adding sub-todo', error: error.message });
   }
@@ -117,32 +202,58 @@ exports.updateSubTodo = async (req, res) => {
   try {
     const { title, description, completed, priority } = req.body;
     const { id, subTodoId } = req.params;
+    const connection = await pool.getConnection();
 
-    const todo = await Todo.findById(id);
-    if (!todo) {
+    // Check if todo exists
+    const [todos] = await connection.execute('SELECT * FROM todos WHERE id = ?', [id]);
+    if (todos.length === 0) {
+      connection.release();
       return res.status(404).json({ message: 'Todo not found' });
     }
 
-    const subTodo = todo.subTodos.id(subTodoId);
-    if (!subTodo) {
+    // Check if subtodo exists
+    const [subtodos] = await connection.execute('SELECT * FROM subtodos WHERE id = ? AND todoId = ?', [subTodoId, id]);
+    if (subtodos.length === 0) {
+      connection.release();
       return res.status(404).json({ message: 'Sub-todo not found' });
     }
 
-    if (title !== undefined) subTodo.title = title;
-    if (description !== undefined) subTodo.description = description;
-    if (completed !== undefined) subTodo.completed = completed;
-    if (priority !== undefined) subTodo.priority = priority;
+    // Build update query
+    const updates = [];
+    const values = [];
+    
+    if (title !== undefined) { updates.push('title = ?'); values.push(title); }
+    if (description !== undefined) { updates.push('description = ?'); values.push(description); }
+    if (completed !== undefined) { updates.push('completed = ?'); values.push(completed); }
+    if (priority !== undefined) { updates.push('priority = ?'); values.push(priority); }
 
-    // Auto-complete parent if all sub-todos are complete
-    const allCompleted = todo.subTodos.every(st => st.completed);
-    if (allCompleted && todo.subTodos.length > 0) {
-      todo.completed = true;
-    } else if (!allCompleted) {
-      todo.completed = false;
+    if (updates.length > 0) {
+      values.push(subTodoId);
+      const query = `UPDATE subtodos SET ${updates.join(', ')} WHERE id = ?`;
+      await connection.execute(query, values);
     }
 
-    const updatedTodo = await todo.save();
-    res.json(updatedTodo);
+    // Auto-complete parent if all sub-todos are complete
+    const [allSubtodos] = await connection.execute('SELECT * FROM subtodos WHERE todoId = ?', [id]);
+    if (allSubtodos.length > 0) {
+      const allCompleted = allSubtodos.every(st => st.completed);
+      await connection.execute('UPDATE todos SET completed = ? WHERE id = ?', [allCompleted, id]);
+    }
+
+    // Get updated todo with all subtodos
+    const [updatedTodos] = await connection.execute('SELECT * FROM todos WHERE id = ?', [id]);
+    const todo = updatedTodos[0];
+    
+    const [updatedSubtodos] = await connection.execute(
+      'SELECT id AS _id, todoId, title, description, completed, priority FROM subtodos WHERE todoId = ?',
+      [todo.id]
+    );
+    
+    todo._id = todo.id;
+    todo.subTodos = updatedSubtodos;
+
+    connection.release();
+    res.json(todo);
   } catch (error) {
     res.status(500).json({ message: 'Error updating sub-todo', error: error.message });
   }
@@ -152,31 +263,40 @@ exports.updateSubTodo = async (req, res) => {
 exports.deleteSubTodo = async (req, res) => {
   try {
     const { id, subTodoId } = req.params;
+    const connection = await pool.getConnection();
 
-    const todo = await Todo.findById(id);
-    if (!todo) {
+    // Check if todo exists
+    const [todos] = await connection.execute('SELECT * FROM todos WHERE id = ?', [id]);
+    if (todos.length === 0) {
+      connection.release();
       return res.status(404).json({ message: 'Todo not found' });
     }
 
-    const subTodo = todo.subTodos.id(subTodoId);
-    if (!subTodo) {
+    // Check if subtodo exists
+    const [subtodos] = await connection.execute('SELECT * FROM subtodos WHERE id = ? AND todoId = ?', [subTodoId, id]);
+    if (subtodos.length === 0) {
+      connection.release();
       return res.status(404).json({ message: 'Sub-todo not found' });
     }
 
-    subTodo.deleteOne();
+    // Delete subtodo
+    await connection.execute('DELETE FROM subtodos WHERE id = ?', [subTodoId]);
 
-    // Auto-complete parent if all sub-todos are complete
-    const allCompleted = todo.subTodos.every(st => st.completed);
-    if (allCompleted && todo.subTodos.length > 1) {
-      todo.completed = true;
-    } else if (todo.subTodos.length === 1) {
-      todo.completed = false;
-    }
+    // Get updated todo with remaining subtodos
+    const [updatedTodos] = await connection.execute('SELECT * FROM todos WHERE id = ?', [id]);
+    const todo = updatedTodos[0];
+    
+    const [updatedSubtodos] = await connection.execute(
+      'SELECT id AS _id, todoId, title, description, completed, priority FROM subtodos WHERE todoId = ?',
+      [todo.id]
+    );
+    
+    todo._id = todo.id;
+    todo.subTodos = updatedSubtodos;
 
-    const updatedTodo = await todo.save();
-    res.json(updatedTodo);
+    connection.release();
+    res.json(todo);
   } catch (error) {
     res.status(500).json({ message: 'Error deleting sub-todo', error: error.message });
   }
 };
-

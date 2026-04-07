@@ -9,6 +9,8 @@ pnpm-debug.log
 .env
 .env.local
 .env.*.local
+.env.example
+.env.production
 
 # Build outputs
 dist/
@@ -35,3 +37,4 @@ logs/
 .cache/
 
 COMPLETE_DEPLOYMENT_GUIDE.md
+
