@@ -174,11 +174,12 @@ exports.addSubTodo = async (req, res) => {
     }
 
     // Check if subtodo count is at maximum (10)
-    const [existingSubtodos] = await connection.execute(
-      'SELECT COUNT(*) as count FROM subtodos WHERE todoId = ?',
+    const [countResult] = await connection.execute(
+      'SELECT COUNT(*) as subtodo_count FROM subtodos WHERE todoId = ?',
       [req.params.id]
     );
-    if (existingSubtodos[0].count >= 10) {
+    const currentCount = countResult[0]?.subtodo_count || Object.values(countResult[0])[0] || 0;
+    if (currentCount >= 10) {
       connection.release();
       return res.status(400).json({ message: 'Cannot add more than 10 sub-todos per todo' });
     }

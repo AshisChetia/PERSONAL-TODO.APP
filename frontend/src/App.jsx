@@ -38,6 +38,13 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(todoData)
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.message || 'Failed to add todo');
+        return;
+      }
+      
       const newTodo = await response.json();
       setTodos([newTodo, ...todos]);
       setError(null);
@@ -55,6 +62,13 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedData)
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.message || 'Failed to update todo');
+        return;
+      }
+      
       const updatedTodo = await response.json();
       setTodos(todos.map(todo => todo._id === id ? updatedTodo : todo));
       setError(null);
@@ -67,7 +81,14 @@ function App() {
   // Handle delete todo
   const handleDeleteTodo = async (id) => {
     try {
-      await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+      const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.message || 'Failed to delete todo');
+        return;
+      }
+      
       setTodos(todos.filter(todo => todo._id !== id));
       setError(null);
     } catch (err) {
@@ -90,6 +111,13 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(subTodoData)
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.message || 'Failed to add sub-todo');
+        return;
+      }
+      
       const updatedTodo = await response.json();
       setTodos(todos.map(todo => todo._id === todoId ? updatedTodo : todo));
       setError(null);
@@ -107,6 +135,13 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedData)
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.message || 'Failed to update sub-todo');
+        return;
+      }
+      
       const updatedTodo = await response.json();
       setTodos(todos.map(todo => todo._id === todoId ? updatedTodo : todo));
       setError(null);
@@ -122,6 +157,13 @@ function App() {
       const response = await fetch(`${API_URL}/${todoId}/subtodos/${subTodoId}`, {
         method: 'DELETE'
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.message || 'Failed to delete sub-todo');
+        return;
+      }
+      
       const updatedTodo = await response.json();
       setTodos(todos.map(todo => todo._id === todoId ? updatedTodo : todo));
       setError(null);
