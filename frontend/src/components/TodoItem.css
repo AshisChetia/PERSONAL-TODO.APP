@@ -192,6 +192,9 @@
   margin-bottom: 12px;
   animation: expandIn 0.4s ease-out;
   pointer-events: auto;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 8px;
 }
 
 @keyframes expandIn {
